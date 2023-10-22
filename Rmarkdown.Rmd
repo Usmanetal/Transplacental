@@ -1,0 +1,227 @@
+---
+title: "IgG Transplacental"
+author: "Usman"
+date: "2023-10-20"
+output:
+  html_document: 
+    toc: yes
+    number_sections: yes
+    theme: journal
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown of my paper on IgG transplacental transfer from mother to her foetus 
+
+## **Introduction**
+
+## **Abstract**
+
+### **Introduction**
+
+Immunoglobulin G (IgG) forms the backbone of the circulating adaptive immune system. Efficient transplacental transfer of maternal adaptive immunity to neonates is crucial for early-life protection against infectious diseases, emphasizing the significance of understanding IgG subclass concentrations and transfer efficiency.
+
+### **Methods**: 
+
+Paired blood samples from 41 mother-infant pairs were collected to evaluate total and subclass IgG levels. Maternal demographic and clinical information was also obtained.
+
+### **Results**: 
+
+Maternal and cord blood showed similar IgG subclass profiles, with a notable gradient of transfer efficiency for IgG subclasses, particularly IgG2 and IgG3, and negative associations between maternal IgG concentrations and transfer ratios.
+
+### **Conclusions**: 
+
+Our findings suggest reduced transplacental transfer of maternal IgG antibodies, emphasizing the role of IgG2 concentration in maternal BMI association and the potential relationship of increased IgG3 levels with antigen-specific response. These results offer valuable insights into the population-specific dynamics of transplacental IgG transfer and warrant further biochemical and physiological investigations.
+
+
+
+```{r cars}
+library(readxl)
+Gestation <- read_excel("~/M.Sc. RAW DATA.xlsx", 
+                        sheet = "Sheet1")
+Gestation
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+```{r,echo = FALSE}
+library(tidyverse)
+```
+
+
+```{r pressure}
+
+Maternal<-Gestation[-42,]%>%select(c(51:55))%>%
+  rename(IgG1="M-IgG1",IgG2="M-IgG2",IgG3="M-IgG3",IgG4="M-IgG4",Total="M-Total")%>%
+  pivot_longer(cols = c(IgG1,IgG2,IgG3,IgG4,Total),names_to = "Maternal",values_to = "m_IgG")
+          
+Cord<-Gestation[-42,]%>%select(c(56:60))%>%
+  rename(IgG1="C-IgG1",IgG2="C-IgG2",IgG3="C-IgG3",IgG4="C-IgG4",Total="C-Total")%>%
+  pivot_longer(cols = c(IgG1,IgG2,IgG3,IgG4,Total),names_to = "Cord",values_to = "c_IgG")
+
+Maternal$group<- "Maternal"
+Cord$group<-"Cord"
+fetal<-rename(Cord,Maternal=Cord,m_IgG="c_IgG")
+
+maternalfetal<-rbind(Maternal,fetal)
+maternalfetal
+```
+
+Note that the `warning = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r, warning=FALSE}
+ggplot(data=filter(maternalfetal,Maternal !="Total"),aes(x=group,y=m_IgG*1000))+
+  geom_violin(trim = FALSE,col="blue",size=1.5)+
+  facet_wrap(~Maternal,nrow=1)+
+  stat_summary(fun.y = median, fun.ymin = median, fun.ymax = median,
+               geom = "crossbar", width = 0.5)+
+  theme_minimal()+scale_x_discrete(limits=c("Maternal","Cord"))+
+  theme(strip.text=element_text(size = 13.7,face = "bold"))+
+  theme(axis.title.y=element_text(colour="darkblue",size=12,face = "bold"),
+        axis.line = element_line(colour="black"),
+        axis.text.x = element_text(size = 10),
+        axis.ticks = element_line(size = 1))+
+  labs(x=element_blank(),y="IgG concentrations μg/ml")+
+  theme(axis.text=element_text(size = 6,face = "bold"))+
+  ylim(-2500,12500)
+```
+
+Transplacental transfer ration
+
+```{r}
+library(ggpubr)
+ggpaired(
+  maternalfetal,x="group",y="log10(m_IgG*1000)", line.size = 0.8,
+  line.color = "gray",point.size=2,width=0.8,color = "blue")+
+  facet_wrap(~Maternal,nrow = 1,scales = "free")+
+  scale_color_manual(name="",values = c("blue","black"))+
+  theme_minimal()+stat_compare_means(paired = TRUE)+
+  labs(x="",y="IgG concentrations (µ/mg) Log10",front="bold")+
+  theme(legend.position = "none",axis.title = element_text(face ="bold",
+  color = "darkblue",size = 17),axis.text.x = element_text(face = "bold",
+  size = 13))+scale_x_discrete(label = c("Maternal"="Maternal","Cord"="Cord"))
+
+```
+
+
+Transplacental transfer ratio
+
+
+```{r, warning=FALSE}
+maternalfetaltrans<-cbind(Maternal,Cord)%>%
+  select(Maternal,m_IgG,Cord,c_IgG)%>%
+  mutate(m_IgG=m_IgG*1000,c_IgG=c_IgG*1000)%>%
+  mutate(ratio=log(m_IgG/c_IgG))%>%mutate(log2trans=log2(ratio))%>%
+  ggplot(aes(Maternal,log2trans))+
+  geom_dotplot(binaxis = "y", binwidth = 0.3, stackdir = "center",
+               fill="darkblue")+stat_summary(fun.y = median, fun.ymin = median,
+              fun.ymax = median,geom = "crossbar", width = 0.5)+theme_minimal()+
+  geom_hline(yintercept = 0,lty="dashed",size=1,color="blue")+
+  theme(axis.title.y=element_text(colour="darkblue",size=10,face = "bold"),
+        axis.line = element_line(colour="black",size = 1),axis.ticks = element_line(size = 1),
+        axis.text.x = element_text(angle = 90,face="bold",vjust = 0.02))+xlab("")+
+        ylab("Maternal-Fetal Transfer Ratio")
+maternalfetaltrans
+```
+
+
+```{r, warning=FALSE}
+
+maternalfetaltrans_gest<-maternalfetaltrans<-cbind(Maternal,Cord)%>%
+  select(Maternal,m_IgG,Cord,c_IgG)%>%
+  mutate(m_IgG=m_IgG*1000,c_IgG=c_IgG*1000)%>%
+  mutate(ratio=log(m_IgG/c_IgG))%>%mutate(log2trans=log2(ratio))
+maternalfetaltrans_gest
+```
+
+
+
+```{r, warning=FALSE}
+library(rstatix)
+#Maternal fetal transfer ratio relative to WHO categorized gestational age
+
+gestAge<-Gestation[-42,]%>%select(c(51:55,73))%>%
+  rename(IgG1="M-IgG1",IgG2="M-IgG2",IgG3="M-IgG3",IgG4="M-IgG4",
+         Total="M-Total")%>%pivot_longer(cols = c(IgG1,IgG2,IgG3,IgG4,Total),
+          names_to = "Maternal",values_to = "m_IgG")
+gestAge
+maternalfetaltrans_gest$GestAge<-gestAge$GestAe
+maternalfetaltrans_gest
+
+# using the function "labels+" in factor function
+a<-expression(bold(""<="36w"))
+b<-expression(bold(37^"0/7"*"w-"*38^"0/7"*w))
+c<-expression(bold(39^"0/7"*"w-"*40^"0/7"*"w"))
+d<-expression(bold(41^"0/7"*"w-"*41^"0/7"*"w"))
+e<-expression(bold("">"42w"))
+
+#pairwise comparison using "library(rstatix)"
+pwc <- maternalfetaltrans_gest %>%
+  group_by(GestAge)%>%
+  dunn_test(ratio~Maternal,p.adjust.method = "none")
+pwc <- pwc %>% add_xy_position(x = "Maternal")
+pwc
+
+
+mf_ratio_gestage<-maternalfetaltrans_gest%>%
+  mutate(GestAge=recode(GestAge,"<42"=">42"))%>%
+  ggplot(aes(Maternal,log2trans))+geom_dotplot(binaxis = "y", binwidth = 0.15,
+  stackdir = "center",fill="darkblue")+facet_wrap(~factor(GestAge,
+  levels=c("<36","37-38","39-40","41-41",">42"),labels=c(a,b,c,d,e)),
+  labeller = label_parsed,nrow = 1)+stat_summary(fun.y = median,
+  fun.ymin = median, fun.ymax = median,geom = "crossbar", width = 0.5)+
+  theme_minimal()+geom_hline(yintercept = 0,lty="dashed",size=1,color="blue")+
+  theme(axis.title.y=element_text("Maternal-Fetal Transfer Ratio",colour="darkblue",
+  size=10,face = "bold"),axis.line = element_line(colour="black",size = 1),
+  axis.ticks = element_line(size = 1),axis.text.x = element_text(angle = 90,
+  face="bold",vjust = 0.02))+stat_pvalue_manual(pwc, tip.length = 0.02, 
+  hide.ns = TRUE,bracket.size = 1,size=7,label = "p.adj.signif",color="darkblue" )+
+  labs(x=element_blank(),y="Maternal to Fetal transfer ratio (Log10 μg/ml)")
+mf_ratio_gestage
+```
+
+
+```{r}
+pwc1 <- maternalfetaltrans_gest %>%
+  group_by(Maternal)%>%
+  dunn_test(ratio~GestAge,p.adjust.method = "none")
+pwc1 <- pwc1 %>% add_xy_position(x = "GestAge")
+pwc1
+mf_ratio_IgG<-maternalfetaltrans_gest%>%
+  mutate(GestAge=recode(GestAge,"<42"=">42"))%>%
+  ggplot(aes(factor(GestAge,levels=c("<36","37-38","39-40","41-41",">42"),
+  labels=c(a,b,c,d,e)),log2trans),labeller=label_parsed)+
+  geom_dotplot(binaxis = "y", binwidth = 0.2, stackdir = "center",fill="darkblue")+
+  facet_wrap(~Maternal,nrow = 1,labeller=label_parsed)+stat_summary(fun.y = median, 
+  fun.ymin = median, fun.ymax = median,geom = "crossbar", width = 0.5)+
+  theme_minimal()+geom_hline(yintercept = 0,lty="dashed",size=1,color="blue")+
+  theme(axis.title.y=element_text(colour="darkblue",size=10,face = "bold"),
+  axis.line = element_line(colour="black",size = 1),
+  axis.ticks = element_line(size = 1),axis.text.x = element_text(angle = 90,
+  face="bold"))+scale_x_discrete(labels=c(a,b,c,d,e))+stat_pvalue_manual(pwc1,
+  tip.length = 0.02, hide.ns = TRUE,bracket.size = 1,size=7,
+  label = "p.adj.signif",color="darkblue" )+labs(x=element_blank(),
+  y="Maternal to Fetal transfer ratio (Log10 μg/ml)")
+mf_ratio_IgG
+```
+
+
+
+```{r, warning=FALSE}
+A<-mf_ratio_gestage+rremove("ylab")
+B<-mf_ratio_IgG+rremove("ylab")
+figure <- ggarrange(
+  A,B,labels = c( "A","B"),nrow = 2,
+  common.legend = TRUE, legend = "none")
+
+annotate_figure(figure, 
+                left = text_grob(
+                  "Maternal to Fetal transfer ratio (Log10 μg/ml)", 
+                  rot = 90, vjust = 1,color="darkblue",size = 17,
+                  face = "bold",hjust = 0.45)
+                )
+```
+
